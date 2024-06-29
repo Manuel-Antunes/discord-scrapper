@@ -67,8 +67,14 @@ export async function crawInfiniteList<T>(page: Page,
         // @ts-ignore
         observer.observe(virtualizedList, { childList: true, subtree: true });
     }
-    await page.exposeFunction('transferData', transferData);
-    await page.exposeFunction('elementCallback', elementCallback);
+    const transferDataFunctionExists = await page.evaluate(() => {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        return !!window.transferData;
+    });
+    if (!transferDataFunctionExists) {
+        await page.exposeFunction('transferData', transferData);
+    }
     await page.evaluate(observeMutation, JSON.stringify({
         selector: listSelector,
         elementSelector,
@@ -81,7 +87,7 @@ export async function crawInfiniteList<T>(page: Page,
             const element = await page.$(listSelector);
             if (!element) throw new Error(`Element not found: ${listSelector}`);
             const scrollPosition = await element?.evaluate((el) => el.scrollTop);
-            await element.evaluate((el) => el.scrollBy({ top: 200, behavior: 'smooth' }));
+            await element.evaluate((el) => el.scrollBy({ top: 150, behavior: 'smooth' }));
             await new Promise((resolve) => setTimeout(resolve, 500));
 
             await page.waitForFunction(`document.querySelector('${listSelector}').scrollTop > ${scrollPosition}`, {}, {

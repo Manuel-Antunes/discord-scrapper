@@ -6,6 +6,7 @@
 
 // For more information, see https://docs.apify.com/sdk/js
 import { Actor } from 'apify';
+
 // For more information, see https://crawlee.dev
 import { PlaywrightCrawler } from 'crawlee';
 // this is ESM project, and as such, it requires you to specify extensions in your relative imports
@@ -13,6 +14,7 @@ import { PlaywrightCrawler } from 'crawlee';
 // note that we need to use `.js` even when inside TS files
 import { config } from './config.js';
 import { router } from './routes.js';
+import { app } from './server.js';
 import { CrawlerInput } from './types.js';
 
 // Initialize the Apify SDK
@@ -26,7 +28,6 @@ const crawler = new PlaywrightCrawler({
     proxyConfiguration,
     maxRequestsPerCrawl: config.maxRequestsPerCrawl,
     requestHandler: router,
-    headless: false,
     useSessionPool: true,
     // Overrides default Session pool configuration.
     sessionPoolOptions: {
@@ -35,12 +36,16 @@ const crawler = new PlaywrightCrawler({
     // Set to true if you want the crawler to save cookies per session,
     // and set the cookie header to request automatically (default is true).
     persistCookiesPerSession: true,
-    launchContext: {
-        userDataDir: process.env.NODE_ENV === 'development' ? './storage/user-data' : undefined,
-    },
+
     browserPoolOptions: {
         useFingerprints: false, // this is the default
     },
+    maxConcurrency: 1,
+    requestHandlerTimeoutSecs: 60 * 60,
+});
+
+app.listen(3000, () => {
+    console.log('Server is running on http://localhost:3000');
 });
 
 await crawler.run(config.startUrls.map((url) => {
