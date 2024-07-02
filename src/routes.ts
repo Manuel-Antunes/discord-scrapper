@@ -164,7 +164,9 @@ async function scrollToCrawUser(
         timeout: 5000,
     });
     const avatarLocator = page.locator('[class*="header_"] [class*="avatar_"]:has(> [class*="wrapper_"])');
-    const visible = await avatarLocator.waitFor().then(
+    const visible = await avatarLocator.waitFor({
+        timeout: 4500,
+    }).then(
         () => true,
     ).catch(() => false);
     if (visible) {
