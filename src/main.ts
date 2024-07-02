@@ -20,9 +20,9 @@ import { CrawlerInput } from './types.js';
 // Initialize the Apify SDK
 await Actor.init();
 
-const proxyConfiguration = await Actor.createProxyConfiguration();
-
 const input: CrawlerInput | null = await Actor.getInput();
+
+const proxyConfiguration = await Actor.createProxyConfiguration(input?.proxyConfig);
 
 const crawler = new PlaywrightCrawler({
     proxyConfiguration,
@@ -36,12 +36,15 @@ const crawler = new PlaywrightCrawler({
     // Set to true if you want the crawler to save cookies per session,
     // and set the cookie header to request automatically (default is true).
     persistCookiesPerSession: true,
-
+    launchContext: {
+        useIncognitoPages: true,
+    },
     browserPoolOptions: {
         useFingerprints: false, // this is the default
     },
+    headless: false,
     maxConcurrency: 1,
-    requestHandlerTimeoutSecs: 60 * 60,
+    requestHandlerTimeoutSecs: 60 * 60 * 24 * 1,
 });
 
 app.listen(3000, () => {

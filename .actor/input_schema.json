@@ -4,33 +4,42 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-      "email": {
-        "title": "Discord Email",
-        "type": "string",
-        "description": "The email address of the Discord account to be used for crawling.",
-        "editor": "textfield"
-      },
-      "password": {
-        "title": "Discord Password",
-        "type": "string",
-        "description": "The password of the Discord account to be used for crawling.",
-        "editor": "textfield"
-      },
-      "servers": {
-        "title": "Discord Servers",
-        "type": "array",
-        "description": "The servers to be crawled for leads.",
-        "editor": "requestListSources",
-        "prefill": [
-            {
-                "url": "https://discord.com/channels/1031294607679557703"
-            }
-        ]
-      }
+        "email": {
+            "title": "Discord Email",
+            "type": "string",
+            "description": "The email address of the Discord account to be used for crawling.",
+            "editor": "textfield"
+        },
+        "password": {
+            "title": "Discord Password",
+            "type": "string",
+            "description": "The password of the Discord account to be used for crawling.",
+            "editor": "textfield"
+        },
+        "servers": {
+            "title": "Discord Servers",
+            "type": "array",
+            "description": "The servers to be crawled for leads.",
+            "editor": "requestListSources",
+            "prefill": [
+                {
+                    "url": "https://discord.com/channels/1031294607679557703"
+                }
+            ]
+        },
+        "proxyConfig": {
+            "title": "Proxy configuration",
+            "type": "object",
+            "description": "Select proxies to be used by your crawler.",
+            "prefill": {
+                "useApifyProxy": true
+            },
+            "editor": "proxy"
+        }
     },
     "required": [
-      "email",
-      "password",
-      "servers"
+        "email",
+        "password",
+        "servers"
     ]
-  }
+}

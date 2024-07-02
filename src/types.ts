@@ -1,8 +1,13 @@
+import { ProxyConfigurationOptions } from 'apify';
+
 export interface CrawlerInput {
     email: string;
     password: string;
     channels: string[];
     cookies: EditThisCookie[]
+    proxyConfig: ProxyConfigurationOptions & {
+        useApifyProxy?: boolean | undefined;
+    }
 }
 
 export interface EditThisCookie {
