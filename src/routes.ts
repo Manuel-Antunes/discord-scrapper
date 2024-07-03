@@ -170,17 +170,18 @@ async function scrollToCrawUser(
         () => true,
     ).catch(() => false);
     if (visible) {
-        const [discordMemberSince, channelMemberSince] = await page.$$eval('[class*="memberSince_"]', (el) => el.map((e) => e.textContent || ''));
-        const roles = await page.$$eval('[class*="role_"][class*="rolePill_"]:not([class*="addButton_"])', (el) => el.map((e) => e.textContent || ''));
-
         await avatarLocator.click();
         await page.waitForLoadState('networkidle', {
             timeout: 5000,
         });
         await page.waitForSelector('[class*="body_"]');
-        const displayName = await page.locator('[class*="text-lg-semibold_"]').textContent({ timeout: 500 }).catch(() => '');
-        const userName = await page.locator('[class*="discriminator_"]').textContent({ timeout: 500 }).catch(() => '');
-        const status = await page.locator('[class*="customStatus_"]').textContent({ timeout: 500 }).catch(() => '');
+
+        const [discordMemberSince, channelMemberSince] = await page.$$eval('[class*="memberSince_"]', (el) => el.map((e) => e.textContent || ''));
+        const roles = await page.$$eval('[class*="role_"][class*="pill_"]:not([class*="addButton_"])', (el) => el.map((e) => e.textContent || ''));
+
+        const displayName = await page.locator('[class*="nickname_"]').textContent({ timeout: 500 }).catch(() => '');
+        const userName = await page.locator('[class*="userTagUsername_"]').textContent({ timeout: 500 }).catch(() => '');
+        const status = await page.locator('[class*="statusText_"]').textContent({ timeout: 500 }).catch(() => '');
         const socialNetworks = (await page.$$eval(connectedAccountContainerSelector, (sel) => {
             return sel.map((el) => {
                 const socialNetwork = el.querySelector('img')?.ariaLabel;
@@ -196,16 +197,17 @@ async function scrollToCrawUser(
             return acc;
         }, {} as Record<string, { link: string, name: string }>);
         log.info(`Member: ${displayName}#${userName} Status: ${status} Number of Social Networks: ${Object.keys(socialNetworks).length}`);
-        await page.keyboard.press('Escape');
         const moreButton = await page.$(moreIconSelector);
         let id: string = '';
         if (moreButton) {
             await moreButton.click();
-            const clickIdButton = await page.$('div[id*="user-profile-actions-devmode-copy-id-"]');
+            const clickIdButton = await page.$('div[id*="user-profile-overflow-menu-devmode-copy-id-"]');
             if (clickIdButton) {
-                id = await clickIdButton.evaluate((el) => el.id.replace('user-profile-actions-devmode-copy-id-', '')).catch(() => '');
+                id = await clickIdButton.evaluate((el) => el.id.replace('user-profile-overflow-menu-devmode-copy-id-', '')).catch(() => '');
             }
         }
+        await page.keyboard.press('Escape');
+
         const channelId = page.url().replace('https://discord.com/channels/', '').split('/').at(0);
         await Actor.pushData({
             displayName,

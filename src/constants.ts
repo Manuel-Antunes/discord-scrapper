@@ -19,7 +19,7 @@ export const displayNameSelector = '[class*="username_"]';
 
 export const usernameSelector = '[class*="wrapper_"]';
 
-export const moreIconSelector = 'div:has(> [class*="additionalActionsIcon_"])';
+export const moreIconSelector = '[class*="wrapper_"][class*="fullSize_"] > div:nth-child(3) button';
 
 export const connectedAccountSelector = '[class*="connectedAccountNameText_"]';
 
