@@ -1,49 +1,20 @@
-import { Actor, Log } from 'apify';
+import { Actor, KeyValueStore, Log } from 'apify';
 import { Dictionary, PlaywrightCrawler, Request, createPlaywrightRouter, playwrightUtils } from 'crawlee';
 import { Page } from 'playwright';
 import {
+    avatarSelector,
     connectedAccountContainerSelector,
-    emailInputSelector,
-    loginButtonSelector,
     memberElementSelector,
     memberListSelector,
-    moreIconSelector,
     panelsSelector,
-    passwordInputSelector,
     showMembersSelector,
 } from './constants.js';
-import { CrawlerInput, MemberSoftData } from './types.js';
-import { crawInfiniteList } from './utils.js';
+import { AuthData, CrawlerInput, MemberSoftData } from './types.js';
+import { crawInfiniteList, login, setPageAuthData } from './utils.js';
 
 export const router = createPlaywrightRouter();
 
-async function login(page: Page, request: Request, log: Log) {
-    await page.goto('https://discord.com/login');
-    log.info('Logging in');
-    const { email, password } = request.userData as CrawlerInput;
-    await page.waitForLoadState('networkidle');
-    await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => null);
-    await playwrightUtils.saveSnapshot(page, { key: 'login', saveHtml: false });
-    // get current page url
-    const url = page.url();
-    log.info(`Current URL: ${url}`);
-    if (url.includes('discord.com/channels/@me')) {
-        return;
-    }
-
-    await page.fill(emailInputSelector, email, {
-        timeout: 1000,
-    });
-    await page.waitForTimeout(1000);
-    await page.fill(passwordInputSelector, password, {
-        timeout: 1000,
-    });
-    await page.click(loginButtonSelector);
-    await playwrightUtils.saveSnapshot(page, { key: 'login-filled', saveHtml: false });
-    await page.waitForURL('https://discord.com/channels/@me');
-}
-
-router.addDefaultHandler(async ({ request, page, crawler, log }) => {
+router.addDefaultHandler(async ({ request, page, crawler, log, browserController }) => {
     log.info('Default handler');
     const { channels } = request.userData as CrawlerInput;
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => null);
@@ -53,7 +24,11 @@ router.addDefaultHandler(async ({ request, page, crawler, log }) => {
         timeout: 10000,
     }).then(() => true).catch(() => false);
     if (!isLoggedIn) {
-        await login(page, request, log);
+        await login(browserController, request, page, log);
+    }
+    if (crawler.autoscaledPool?.maxConcurrency) {
+        crawler.autoscaledPool.desiredConcurrency = 1 + channels.length;
+        crawler.autoscaledPool.maxConcurrency = 1 + channels.length;
     }
     await crawler.addRequests(channels.map(
         (el) => ({
@@ -64,11 +39,17 @@ router.addDefaultHandler(async ({ request, page, crawler, log }) => {
     ));
 });
 
-router.use(async ({ page, log, request }) => {
+router.use(async ({ page, log, request, browserController }) => {
     log.info('Check for login');
     const originalUrl = page.url();
+    const authData = await KeyValueStore.getValue<AuthData>('authData');
+    if (authData) {
+        await setPageAuthData(page, authData);
+        await page.reload();
+    }
+
     const isLoggedIn = await page.waitForSelector(panelsSelector, {
-        timeout: 10000,
+        timeout: 5000,
     }).then(() => true).catch(() => false);
     const pageUrl = page.url();
     if (!pageUrl.includes('login')) {
@@ -77,7 +58,7 @@ router.use(async ({ page, log, request }) => {
     }
 
     if (!isLoggedIn) {
-        await login(page, request, log);
+        await login(browserController, request, page, log);
         await page.goto(originalUrl);
     }
 });
@@ -125,6 +106,10 @@ router.addHandler('channel', async ({ page, log, crawler, request }) => {
         }]);
     });
     log.info(`Number of members: ${listElements.length}`);
+    if (crawler.autoscaledPool?.maxConcurrency) {
+        crawler.autoscaledPool.desiredConcurrency -= 1;
+        crawler.autoscaledPool.maxConcurrency -= 1;
+    }
 });
 
 async function scrollToCrawUser(
@@ -163,13 +148,20 @@ async function scrollToCrawUser(
     await page.waitForLoadState('networkidle', {
         timeout: 5000,
     });
-    const avatarLocator = page.locator('[class*="header_"] [class*="avatar_"]:has(> [class*="wrapper_"])');
+    const avatarLocator = page.locator(avatarSelector);
     const visible = await avatarLocator.waitFor({
         timeout: 4500,
     }).then(
         () => true,
     ).catch(() => false);
     if (visible) {
+        const id = await page.$eval(`${avatarSelector} img`, (el) => {
+            const src = el.getAttribute('src');
+            if (src) {
+                return src.replace(/.*\/avatars\/(.*)\/.*/gm, '$1');
+            }
+            return '';
+        });
         await avatarLocator.click();
         await page.waitForLoadState('networkidle', {
             timeout: 5000,
@@ -197,17 +189,6 @@ async function scrollToCrawUser(
             return acc;
         }, {} as Record<string, { link: string, name: string }>);
         log.info(`Member: ${displayName}#${userName} Status: ${status} Number of Social Networks: ${Object.keys(socialNetworks).length}`);
-        const moreButton = await page.$(moreIconSelector);
-        let id: string = '';
-        if (moreButton) {
-            await moreButton.click();
-            const clickIdButton = await page.$('div[id*="user-profile-overflow-menu-devmode-copy-id-"]');
-            if (clickIdButton) {
-                id = await clickIdButton.evaluate((el) => el.id.replace('user-profile-overflow-menu-devmode-copy-id-', '')).catch(() => '');
-            }
-        }
-        await page.keyboard.press('Escape');
-
         const channelId = page.url().replace('https://discord.com/channels/', '').split('/').at(0);
         await Actor.pushData({
             displayName,
@@ -222,6 +203,7 @@ async function scrollToCrawUser(
             id,
         });
     }
+    await page.keyboard.press('Escape');
     const requestQueue = await crawler.getRequestQueue();
     const nextRequest = await requestQueue.fetchNextRequest();
     if (request) {

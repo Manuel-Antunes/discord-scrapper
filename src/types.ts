@@ -29,3 +29,8 @@ export interface MemberSoftData {
     displayName: string
     userName: string
 }
+
+export interface AuthData {
+    token: string
+    tokens: object
+}

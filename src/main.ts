@@ -24,28 +24,29 @@ const input: CrawlerInput | null = await Actor.getInput();
 
 const proxyConfiguration = await Actor.createProxyConfiguration(input?.proxyConfig);
 
-const crawler = new PlaywrightCrawler({
-    proxyConfiguration,
-    maxRequestsPerCrawl: config.maxRequestsPerCrawl,
-    requestHandler: router,
-    useSessionPool: true,
-    // Overrides default Session pool configuration.
-    sessionPoolOptions: {
-        maxPoolSize: 1000,
+const crawler = new PlaywrightCrawler(
+    {
+        proxyConfiguration,
+        maxRequestsPerCrawl: config.maxRequestsPerCrawl,
+        requestHandler: router,
+        useSessionPool: true,
+        // Overrides default Session pool configuration.
+        sessionPoolOptions: {
+            maxPoolSize: 1000,
+        },
+        // Set to true if you want the crawler to save cookies per session,
+        // and set the cookie header to request automatically (default is true).
+        persistCookiesPerSession: true,
+        launchContext: {
+            useIncognitoPages: true,
+        },
+        browserPoolOptions: {
+            useFingerprints: false, // this is the default
+        },
+        headless: false,
+        requestHandlerTimeoutSecs: 60 * 60 * 24 * 1,
     },
-    // Set to true if you want the crawler to save cookies per session,
-    // and set the cookie header to request automatically (default is true).
-    persistCookiesPerSession: true,
-    launchContext: {
-        useIncognitoPages: true,
-    },
-    browserPoolOptions: {
-        useFingerprints: false, // this is the default
-    },
-    headless: false,
-    maxConcurrency: 1,
-    requestHandlerTimeoutSecs: 60 * 60 * 24 * 1,
-});
+);
 
 app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000');
